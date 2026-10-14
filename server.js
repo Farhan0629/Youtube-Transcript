@@ -157,16 +157,17 @@ async function fetchViaHtmlScrape(videoId, wantedLang, YT) {
 
 async function fetchViaInnertube(videoId, wantedLang, YT) {
   const clients = [
-    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)', bodyExtra: { hl: 'en', gl: 'US' } },
-    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)', bodyExtra: { hl: 'en', gl: 'IN' } },
-    { name: 'IOS', version: '20.42.6', ua: 'com.google.ios.youtube/20.42.6 (iPhone14,3; U; CPU iOS 18_0 like Mac OS X)', bodyExtra: { hl: 'en', gl: 'US' } },
-    { name: 'WEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', bodyExtra: { hl: 'en', gl: 'US' } },
-    { name: 'MWEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15', bodyExtra: { hl: 'en', gl: 'US' } },
+    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)' },
+    { name: 'IOS', version: '20.42.6', ua: 'com.google.ios.youtube/20.42.6 (iPhone14,3; U; CPU iOS 18_0 like Mac OS X)' },
+    { name: 'ANDROID', version: '19.09.37', ua: 'com.google.android.youtube/19.09.37 (Linux; U; Android 13)' },
+    { name: 'WEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' },
   ];
   for (const c of clients) {
     try {
+      const clientObj = { clientName: c.name, clientVersion: c.version };
+      if (c.bodyExtra) Object.assign(clientObj, c.bodyExtra);
       const body = {
-        context: { client: { clientName: c.name, clientVersion: c.version, hl: c.bodyExtra.hl, gl: c.bodyExtra.gl } },
+        context: { client: clientObj },
         videoId, contentCheckOk: true, racyCheckOk: true,
       };
       const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
@@ -207,35 +208,42 @@ async function fetchViaInnertube(videoId, wantedLang, YT) {
 
 async function fetchTranscriptRobust(videoId, wantedLang, YT) {
   let lastErr = null;
-  // 1) library with requested lang — most reliable locally, but can 404 on Vercel datacenter IPs for asr tracks
-  try { return await YT.fetchTranscript(videoId, { lang: wantedLang }); } catch (e) {
+
+  // 1) multi-client Innertube FIRST — hits YouTube's mobile player API directly (no web recaptcha blocking)
+  try {
+    const viaInnertube = await fetchViaInnertube(videoId, wantedLang, YT);
+    if (viaInnertube && viaInnertube.length) return viaInnertube;
+  } catch (e) {
+    lastErr = e;
+    console.error('[ROBUST] Innertube error:', e.message);
+  }
+
+  // 2) library with requested lang — reliable locally or when Innertube is bypassed
+  try {
+    return await YT.fetchTranscript(videoId, { lang: wantedLang });
+  } catch (e) {
     lastErr = e;
     const m = String(e?.message || '');
-    const isLangIssue = m.includes('Available languages') || m.toLowerCase().includes('not available');
-    const isDisabledish = /disabled|no transcripts/i.test(m);
-    if (isLangIssue) {
+    if (m.includes('Available languages') || m.toLowerCase().includes('not available')) {
       try { return await YT.fetchTranscript(videoId); } catch (e2) { lastErr = e2; }
       if (wantedLang !== 'en') {
-        // also try explicit en
         try { return await YT.fetchTranscript(videoId, { lang: 'en' }); } catch (e3) { lastErr = e3; }
       }
-    } else if (!isDisabledish) {
-      // Non-retryable (e.g., video unavailable, captcha) — propagate immediately
-      throw e;
     }
-    // For disabled/no-transcripts, fall through to direct strategies below instead of throwing
   }
-  // 2) multi-client Innertube — hits YouTube's player API directly with several client identities
-  const viaInnertube = await fetchViaInnertube(videoId, wantedLang, YT);
-  if (viaInnertube && viaInnertube.length) return viaInnertube;
+
   // 3) HTML scrape — extracts timedtext URLs embedded in watch page
-  const viaHtml = await fetchViaHtmlScrape(videoId, wantedLang, YT);
-  if (viaHtml && viaHtml.length) return viaHtml;
-  // 4) library without lang as last resort (covers some edge where Innertube HTML above missed)
-  if (wantedLang !== 'en') {
-    try { return await YT.fetchTranscript(videoId); } catch (e) { lastErr = e; }
+  try {
+    const viaHtml = await fetchViaHtmlScrape(videoId, wantedLang, YT);
+    if (viaHtml && viaHtml.length) return viaHtml;
+  } catch (e) {
+    lastErr = e;
   }
+
+  // 4) library fallback without lang
+  try { return await YT.fetchTranscript(videoId); } catch (e) { lastErr = e; }
   try { return await YT.fetchTranscript(videoId, { lang: 'en' }); } catch (e) { lastErr = e; }
+
   throw lastErr || new Error('Failed to fetch transcript after all fallbacks');
 }
 
