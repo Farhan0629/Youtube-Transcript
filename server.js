@@ -180,7 +180,7 @@ async function fetchViaInnertube(videoId, wantedLang, YT) {
       if (!track?.baseUrl) continue;
       // baseUrl already carries signature/expire; fetch as-is
       const tr = await fetch(track.baseUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36' },
+        headers: { 'User-Agent': c.ua, 'Accept-Language': 'en-US,en;q=0.9' },
         signal: AbortSignal.timeout(7000),
       });
       if (!tr.ok) continue;
