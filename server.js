@@ -88,45 +88,94 @@ setInterval(() => {
   for (const [k, v] of aiHits) if (now > v.resetAt) aiHits.delete(k);
 }, 60_000).unref?.();
 
-// ---- Robust transcript fetcher: tries library then direct Innertube clients ----
-async function fetchTranscriptRobust(videoId, wantedLang, YT) {
-  let lastErr = null;
-  // 1) library with requested lang
-  try { return await YT.fetchTranscript(videoId, { lang: wantedLang }); } catch (e) {
-    lastErr = e;
-    const m = String(e?.message || '');
-    const isLangIssue = m.includes('Available languages') || m.toLowerCase().includes('not available');
-    const isDisabled = /disabled|no transcripts/i.test(m);
-    if (!isLangIssue && !isDisabled) throw e;
-    if (isLangIssue) {
-      try { return await YT.fetchTranscript(videoId); } catch (e2) { lastErr = e2; }
-    }
-  }
-  // 2) library without lang (covers auto-generated)
-  if (wantedLang !== 'en') {
-    try { return await YT.fetchTranscript(videoId); } catch (e) { lastErr = e; }
-  }
-  // 3) direct Innertube with multiple clients — bypasses library's single-client + HTML scrape fallbacks
-  //    Vercel IPs sometimes get empty captionTracks for one client but succeed with another (seen: WEB=UNPLAYABLE, ANDROID=OK locally, but Vercel bom1 may differ).
-  const innertubeClients = [
-    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)' },
-    { name: 'IOS', version: '20.42.6', ua: 'com.google.ios.youtube/20.42.6 (iPhone14,3; U; CPU iOS 18_0 like Mac OS X)' },
-    { name: 'MWEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+// ---- Robust transcript fetcher: library + multi-client Innertube + HTML scrape ----
+async function fetchViaHtmlScrape(videoId, wantedLang, YT) {
+  // Fetch watch page HTML and extract captionTracks baseUrls via regex
+  // This is independent of Innertube and works when player API is IP-limited
+  const uas = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   ];
-  for (const c of innertubeClients) {
+  for (const ua of uas) {
     try {
+      const r = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+        headers: {
+          'User-Agent': ua,
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) continue;
+      const html = await r.text();
+      if (!html || html.length < 1000) continue;
+      // Extract all timedtext baseUrls — look for the JSON-escaped form + direct form
+      const re = /https:\/\/www\.youtube\.com\/api\/timedtext\?[^"'\s\\]+/g;
+      const matches = html.match(re);
+      if (!matches || !matches.length) continue;
+      // Unescape and dedupe; prefer current wantedLang
+      const urls = [...new Set(matches.map(u => u.replace(/\\u0026/g, '&').replace(/\\/g, '')))];
+      let best = urls.find(u => u.includes(`lang=${wantedLang}`)) || urls.find(u => u.includes('lang=en')) || urls[0];
+      // Ensure format param; server's parse handles both srv3 + classic
+      if (best && !best.includes('fmt=')) best += '&fmt=srv3';
+      // The HTML URLs are often without signature — need to use them as-is; if they 403, skip
+      for (const cand of [best, ...urls].slice(0, 3)) {
+        try {
+          const tr = await fetch(cand, {
+            headers: { 'User-Agent': ua, 'Accept-Language': 'en-US,en;q=0.9' },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!tr.ok) continue;
+          const xml = await tr.text();
+          if (!xml || xml.length < 30 || xml.includes('Your bot is costing')) continue;
+          // Try both srv3 and classic parsers
+          let parsed = [];
+          try { parsed = YT.parseTranscriptXml(xml, wantedLang); } catch (_) { parsed = []; }
+          if (parsed && parsed.length) return parsed;
+          // Fallback: classic regex extract
+          const classicRe = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
+          const classic = [...xml.matchAll(classicRe)].map(m => ({
+            text: m[3].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'"),
+            duration: parseFloat(m[2]),
+            offset: parseFloat(m[1]) * 1000,
+            lang: wantedLang,
+          }));
+          if (classic.length) return classic;
+        } catch (_) { continue; }
+      }
+    } catch (_) { continue; }
+  }
+  return null;
+}
+
+async function fetchViaInnertube(videoId, wantedLang, YT) {
+  const clients = [
+    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)', bodyExtra: { hl: 'en', gl: 'US' } },
+    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)', bodyExtra: { hl: 'en', gl: 'IN' } },
+    { name: 'IOS', version: '20.42.6', ua: 'com.google.ios.youtube/20.42.6 (iPhone14,3; U; CPU iOS 18_0 like Mac OS X)', bodyExtra: { hl: 'en', gl: 'US' } },
+    { name: 'WEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', bodyExtra: { hl: 'en', gl: 'US' } },
+    { name: 'MWEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15', bodyExtra: { hl: 'en', gl: 'US' } },
+  ];
+  for (const c of clients) {
+    try {
+      const body = {
+        context: { client: { clientName: c.name, clientVersion: c.version, hl: c.bodyExtra.hl, gl: c.bodyExtra.gl } },
+        videoId, contentCheckOk: true, racyCheckOk: true,
+      };
       const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'User-Agent': c.ua },
-        body: JSON.stringify({ context: { client: { clientName: c.name, clientVersion: c.version } }, videoId }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(7000),
       });
       if (!r.ok) continue;
       const data = await r.json();
       const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
       if (!Array.isArray(tracks) || !tracks.length) continue;
+      // Prefer requested lang, otherwise en, otherwise first track (handles auto-generated)
       const track = tracks.find(t => t.languageCode === wantedLang) || tracks.find(t => t.languageCode === 'en') || tracks[0];
       if (!track?.baseUrl) continue;
+      // baseUrl already carries signature/expire; fetch as-is
       const tr = await fetch(track.baseUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36' },
         signal: AbortSignal.timeout(7000),
@@ -138,6 +187,40 @@ async function fetchTranscriptRobust(videoId, wantedLang, YT) {
       if (parsed && parsed.length) return parsed;
     } catch (_) { continue; }
   }
+  return null;
+}
+
+async function fetchTranscriptRobust(videoId, wantedLang, YT) {
+  let lastErr = null;
+  // 1) library with requested lang — most reliable locally, but can 404 on Vercel datacenter IPs for asr tracks
+  try { return await YT.fetchTranscript(videoId, { lang: wantedLang }); } catch (e) {
+    lastErr = e;
+    const m = String(e?.message || '');
+    const isLangIssue = m.includes('Available languages') || m.toLowerCase().includes('not available');
+    const isDisabledish = /disabled|no transcripts/i.test(m);
+    if (isLangIssue) {
+      try { return await YT.fetchTranscript(videoId); } catch (e2) { lastErr = e2; }
+      if (wantedLang !== 'en') {
+        // also try explicit en
+        try { return await YT.fetchTranscript(videoId, { lang: 'en' }); } catch (e3) { lastErr = e3; }
+      }
+    } else if (!isDisabledish) {
+      // Non-retryable (e.g., video unavailable, captcha) — propagate immediately
+      throw e;
+    }
+    // For disabled/no-transcripts, fall through to direct strategies below instead of throwing
+  }
+  // 2) multi-client Innertube — hits YouTube's player API directly with several client identities
+  const viaInnertube = await fetchViaInnertube(videoId, wantedLang, YT);
+  if (viaInnertube && viaInnertube.length) return viaInnertube;
+  // 3) HTML scrape — extracts timedtext URLs embedded in watch page
+  const viaHtml = await fetchViaHtmlScrape(videoId, wantedLang, YT);
+  if (viaHtml && viaHtml.length) return viaHtml;
+  // 4) library without lang as last resort (covers some edge where Innertube HTML above missed)
+  if (wantedLang !== 'en') {
+    try { return await YT.fetchTranscript(videoId); } catch (e) { lastErr = e; }
+  }
+  try { return await YT.fetchTranscript(videoId, { lang: 'en' }); } catch (e) { lastErr = e; }
   throw lastErr || new Error('Failed to fetch transcript after all fallbacks');
 }
 
