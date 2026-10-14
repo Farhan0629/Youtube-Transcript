@@ -1,4 +1,4 @@
-module.exports = (req, res) => {
-  const app = require('../server.js');
-  return app(req, res);
-};
+const app = require('../server.js');
+
+module.exports = (req, res) => app(req, res);
+

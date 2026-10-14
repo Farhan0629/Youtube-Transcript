@@ -1,3 +1,6 @@
+// Load .env locally — on Vercel/Render env is injected, ignore missing file
+try { require('dotenv').config(); } catch (_) {}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
