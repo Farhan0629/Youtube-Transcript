@@ -5,6 +5,17 @@ const statusEl = document.getElementById('status');
 const errorEl = document.getElementById('error');
 const pasteBtn = document.getElementById('pasteBtn');
 
+// Mode Switcher & Paste form elements
+const tabModeUrl = document.getElementById('tabModeUrl');
+const tabModePaste = document.getElementById('tabModePaste');
+const pasteForm = document.getElementById('pasteForm');
+const pasteTitleInput = document.getElementById('pasteTitle');
+const pastedTextInput = document.getElementById('pastedText');
+const submitPasteBtn = document.getElementById('submitPasteBtn');
+const pasteClipboardBtn = document.getElementById('pasteClipboardBtn');
+const pasteStatusEl = document.getElementById('pasteStatus');
+const pasteErrorEl = document.getElementById('pasteError');
+
 const result = document.getElementById('result');
 const videoTitleEl = document.getElementById('videoTitle');
 const metaEl = document.getElementById('meta');
@@ -31,6 +42,33 @@ function toast(msg){
 }
 window.toast = toast;
 
+function switchMode(mode){
+  if (!tabModeUrl || !tabModePaste) return;
+  if (mode === 'url'){
+    tabModeUrl.classList.add('is-active');
+    tabModeUrl.setAttribute('aria-selected', 'true');
+    tabModePaste.classList.remove('is-active');
+    tabModePaste.setAttribute('aria-selected', 'false');
+    form.hidden = false;
+    if (pasteForm) pasteForm.hidden = true;
+    urlInput.focus();
+  } else {
+    tabModePaste.classList.add('is-active');
+    tabModePaste.setAttribute('aria-selected', 'true');
+    tabModeUrl.classList.remove('is-active');
+    tabModeUrl.setAttribute('aria-selected', 'false');
+    form.hidden = true;
+    if (pasteForm) pasteForm.hidden = false;
+    if (pastedTextInput) pastedTextInput.focus();
+  }
+}
+window.switchMode = switchMode;
+
+if (tabModeUrl && tabModePaste) {
+  tabModeUrl.addEventListener('click', () => switchMode('url'));
+  tabModePaste.addEventListener('click', () => switchMode('paste'));
+}
+
 function setLoading(v){
   submitBtn.classList.toggle('is-loading', v);
   submitBtn.disabled = v;
@@ -38,8 +76,26 @@ function setLoading(v){
   statusEl.textContent = v ? 'Fetching transcript…' : '';
 }
 function showError(msg){
-  errorEl.textContent = msg;
-  errorEl.hidden = !msg;
+  if (!msg) {
+    errorEl.textContent = '';
+    errorEl.hidden = true;
+    return;
+  }
+  errorEl.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  errorEl.appendChild(span);
+
+  if (/blocked|rate-limit|cloud IP|disabled/i.test(msg)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'link-btn';
+    btn.style.cssText = 'color:#d6ff57; font-weight:600; margin-top:6px; display:block;';
+    btn.textContent = '👉 Switch to "Paste Transcript" mode';
+    btn.onclick = () => switchMode('paste');
+    errorEl.appendChild(btn);
+  }
+  errorEl.hidden = false;
 }
 function fmt(n){ return new Intl.NumberFormat().format(n); }
 
@@ -115,6 +171,64 @@ form.addEventListener('submit', (e)=>{
   e.preventDefault();
   extract(urlInput.value);
 });
+
+function setPasteLoading(v){
+  if (!submitPasteBtn) return;
+  submitPasteBtn.classList.toggle('is-loading', v);
+  submitPasteBtn.disabled = v;
+  if (pastedTextInput) pastedTextInput.disabled = v;
+  if (pasteStatusEl) pasteStatusEl.textContent = v ? 'Processing transcript…' : '';
+}
+function showPasteError(msg){
+  if (!pasteErrorEl) return;
+  pasteErrorEl.textContent = msg;
+  pasteErrorEl.hidden = !msg;
+}
+
+if (pasteForm) {
+  pasteForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    showPasteError('');
+    const text = (pastedTextInput?.value || '').trim();
+    if (!text){
+      showPasteError('Please paste transcript or lecture text.');
+      return;
+    }
+    const title = (pasteTitleInput?.value || '').trim();
+    setPasteLoading(true);
+    try{
+      const r = await fetch('/api/transcript/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, title })
+      });
+      const j = await r.json().catch(()=> ({}));
+      if (!r.ok) throw new Error(j.error || `Processing failed (${r.status})`);
+      render(j);
+      toast('Transcript loaded ✓ — now generate AI study notes below');
+    }catch(err){
+      showPasteError(err.message || 'Failed to process pasted transcript.');
+    }finally{
+      setPasteLoading(false);
+    }
+  });
+}
+
+if (pasteClipboardBtn) {
+  pasteClipboardBtn.addEventListener('click', async ()=>{
+    try{
+      const t = await navigator.clipboard.readText();
+      if (t){
+        pastedTextInput.value = t.trim();
+        pastedTextInput.focus();
+        toast('Pasted from clipboard ✓');
+      }
+    }catch{
+      pastedTextInput.focus();
+      document.execCommand('paste');
+    }
+  });
+}
 
 // Tabs (result card only)
 document.querySelectorAll('#result .tab').forEach(btn=>{

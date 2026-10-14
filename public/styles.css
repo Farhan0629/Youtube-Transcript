@@ -83,6 +83,17 @@ a{color:inherit}
   backdrop-filter: blur(14px) saturate(1.15);
 }
 .input-card{margin-top:18px; padding:18px}
+.mode-tabs{display:flex; gap:8px; margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:12px}
+.mode-tab{border:1px solid transparent; background:transparent; color:var(--muted); padding:8px 14px; border-radius:999px; cursor:pointer; font-size:12px; transition:all .15s ease}
+.mode-tab:hover{color:var(--text); background:rgba(255,255,255,.05)}
+.mode-tab.is-active{background:rgba(255,255,255,.10); border-color:var(--line); color:var(--text); font-weight:600}
+.paste-textarea-wrap{margin:10px 0}
+.paste-textarea{
+  width:100%; border-radius:16px; background:rgba(10,11,16,.55); border:1px solid var(--line-2);
+  color:var(--text); font-size:13px; line-height:1.6; padding:12px 14px; outline:0; resize:vertical;
+  box-sizing:border-box; font-family:"JetBrains Mono", monospace; min-height:120px;
+}
+.paste-textarea:focus{border-color:rgba(255,59,48,.45); box-shadow:0 0 0 4px rgba(255,59,48,.14)}
 .label{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:10px}
 .input-row{display:flex; gap:12px; align-items:stretch}
 .input-wrap{flex:1; display:flex; align-items:center; gap:10px; padding:6px 6px 6px 12px;

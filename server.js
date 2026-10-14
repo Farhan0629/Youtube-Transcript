@@ -247,11 +247,100 @@ async function fetchTranscriptRobust(videoId, wantedLang, YT) {
   throw lastErr || new Error('Failed to fetch transcript after all fallbacks');
 }
 
-// ---- API: transcript (unchanged core) ----
+function parsePastedTranscript(rawText) {
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const segments = [];
+  const tsOnlyRegex = /^(?:\[?(\d{1,2}:)?(\d{1,2}):(\d{2})\]?)$/;
+  const tsWithTextRegex = /^(?:\[?(\d{1,2}:)?(\d{1,2}):(\d{2})\]?)\s*(.+)$/;
+
+  let pendingTsMs = null;
+  let runningOffset = 0;
+
+  function toMs(h, m, s) {
+    const hours = h ? parseInt(h.replace(':', ''), 10) : 0;
+    const mins = parseInt(m, 10);
+    const secs = parseInt(s, 10);
+    return (hours * 3600 + mins * 60 + secs) * 1000;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const mOnly = line.match(tsOnlyRegex);
+    if (mOnly) {
+      pendingTsMs = toMs(mOnly[1], mOnly[2], mOnly[3]);
+      continue;
+    }
+    const mWith = line.match(tsWithTextRegex);
+    if (mWith) {
+      const ms = toMs(mWith[1], mWith[2], mWith[3]);
+      segments.push({ text: mWith[4].trim(), offset: ms, duration: 3000 });
+      pendingTsMs = null;
+      continue;
+    }
+    const offset = pendingTsMs !== null ? pendingTsMs : runningOffset;
+    segments.push({ text: line, offset, duration: 3000 });
+    runningOffset = offset + 3000;
+    pendingTsMs = null;
+  }
+
+  return segments;
+}
+
+async function handleCustomTranscript(req, res) {
+  const t0 = Date.now();
+  const { text, title, url } = req.body || {};
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: 'Please provide transcript text to parse.' });
+  }
+
+  let videoId = 'custom';
+  let resolvedTitle = (title || '').trim();
+  if (url) {
+    const vid = extractVideoId(url);
+    if (vid) {
+      videoId = vid;
+      if (!resolvedTitle) {
+        try { resolvedTitle = await fetchTitle(vid, url); } catch (_) {}
+      }
+    }
+  }
+  if (!resolvedTitle) resolvedTitle = 'Lecture Notes / Custom Transcript';
+
+  const segments = parsePastedTranscript(text);
+  if (!segments.length) {
+    return res.status(400).json({ error: 'Could not parse any text from the provided input.' });
+  }
+
+  const fullText = segments.map(s => s.text).join(' ');
+  const timestamped = segments.map(s => `[${formatTime(s.offset)}] ${s.text}`).join('\n');
+  const elapsed = Date.now() - t0;
+
+  return res.json({
+    videoId,
+    title: resolvedTitle,
+    url: url || (videoId !== 'custom' ? `https://www.youtube.com/watch?v=${videoId}` : 'https://www.youtube.com'),
+    language: 'en',
+    segmentCount: segments.length,
+    charCount: fullText.length,
+    wordCount: fullText.split(/\s+/).filter(Boolean).length,
+    durationApprox: segments.length ? formatTime(segments[segments.length - 1].offset + segments[segments.length - 1].duration) : null,
+    text: fullText,
+    timestamped,
+    segments,
+    elapsedMs: elapsed,
+  });
+}
+
+// ---- API: transcript (URL extraction + custom fallback) ----
+app.post('/api/transcript/custom', handleCustomTranscript);
+
 app.post('/api/transcript', async (req, res) => {
   const t0 = Date.now();
-  const { url, lang } = req.body || {};
-  if (!url) return res.status(400).json({ error: 'YouTube URL is required.' });
+  const { url, lang, text } = req.body || {};
+  if (text && !url) {
+    return handleCustomTranscript(req, res);
+  }
+  if (!url) return res.status(400).json({ error: 'YouTube URL or transcript text is required.' });
 
   const videoId = extractVideoId(url);
   if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL. Please paste a valid youtube.com or youtu.be link.' });
@@ -302,11 +391,26 @@ app.post('/api/transcript', async (req, res) => {
     const msg = err?.message || 'Failed to fetch transcript.';
     let status = 500;
     let friendly = msg.replace(/^\[YoutubeTranscript\]\s*🚨\s*/, '');
-    if (/disabled/i.test(msg)) { status = 404; friendly = 'Transcripts are disabled for this video.'; }
-    else if (/no transcripts/i.test(msg)) { status = 404; friendly = 'No transcripts are available for this video.'; }
-    else if (/not available/i.test(msg)) { status = 404; friendly = 'No English transcript available for this video.'; }
-    else if (/video.*unavailable|no longer available/i.test(msg)) { status = 404; friendly = 'This video is unavailable or private.'; }
-    else if (/too many requests|captcha/i.test(msg)) { status = 429; friendly = 'YouTube is rate-limiting requests. Please try again in a minute.'; }
+    if (/disabled/i.test(msg)) { 
+      status = 404; 
+      friendly = 'Transcripts are disabled or blocked on this cloud IP. You can switch to "Paste Transcript" mode to paste the transcript directly, or run locally on your phone via Termux.'; 
+    }
+    else if (/no transcripts/i.test(msg)) { 
+      status = 404; 
+      friendly = 'No transcripts are available for this video.'; 
+    }
+    else if (/not available/i.test(msg)) { 
+      status = 404; 
+      friendly = 'No English transcript available for this video.'; 
+    }
+    else if (/video.*unavailable|no longer available/i.test(msg)) { 
+      status = 404; 
+      friendly = 'This video is unavailable or private.'; 
+    }
+    else if (/too many requests|captcha/i.test(msg)) { 
+      status = 429; 
+      friendly = 'YouTube is rate-limiting cloud requests from this datacenter IP. You can switch to "Paste Transcript" mode to paste the transcript directly, or run locally on your phone via Termux.'; 
+    }
     friendly = friendly.slice(0, 400);
     res.status(status).json({ error: friendly });
   }
