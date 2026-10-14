@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>TranscriptGen — YouTube Transcript + AI Study Companion</title>
+  <meta name="description" content="Paste any YouTube lecture link and get the transcript plus AI-structured notes, summaries, glossary, quiz and chat — built for NPTEL exam prep." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,700;9..144,1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg">
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-vignette"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2.5c4.2 0 7.5 1.6 9.2 4.7.4.7.4 1.6 0 2.3A11.2 11.2 0 0 1 12 14c-3.2 0-6.1-1.6-7.9-4.2a1.7 1.7 0 0 1 0-1.9C5.8 4.3 8.7 2.5 12 2.5Z" fill="currentColor" opacity=".95"/><path d="M4.2 13.2c1.7 3.1 4.7 5 7.8 5 3.1 0 6.1-1.9 7.8-5a1 1 0 0 0 0-.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".9"/><path d="M8.5 10.2h3M8.5 12.2h4.2M8.5 14.2h2.6" stroke="white" stroke-width="1.35" stroke-linecap="round" opacity=".95"/></svg>
+      </span>
+      <span class="brand-name">TranscriptGen</span>
+      <span class="brand-dot"></span>
+      <span class="brand-sub">YouTube → Text → Exam Ready</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="pill mono"><span class="pill-dot"></span> Fast · Accurate · AI Study</span>
+      <a class="icon-btn" href="https://github.com/Farhan0629/Youtube-Transcript" target="_blank" rel="noopener" aria-label="GitHub">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" opacity=".9"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02A9.3 9.3 0 0 1 12 6.8a9.3 9.3 0 0 1 2.5.34c1.9-1.29 2.74-1.02 2.74-1.02.56 1.38.21 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.86v2.76c0 .26.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow mono">✨ NEW — AI Study Companion for NPTEL · Structured notes · Quiz · Chat</div>
+      <h1 class="h1"><span class="h1-accent">YouTube</span> lecture →<br/>exam-ready notes.</h1>
+      <p class="lede">Paste any lecture link — get the transcript with the video title, then generate AI-structured notes, TL;DR + detailed summaries, glossary, MCQs and an Ask-the-Lecture chat. No rewatching needed.</p>
+    </section>
+
+    <section class="card input-card" aria-label="Transcript extractor">
+      <form id="form" autocomplete="off" novalidate>
+        <label class="label mono" for="url">YouTube URL</label>
+        <div class="input-row">
+          <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M10.5 13.5 13.5 10.5M13.2 7.2 15 6l1.5 1.5-1.2 1.8-2.1 2.1-3 1-.4-3 2.1-2.1Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 12A7.5 7.5 0 1 1 4.5 12a7.5 7.5 0 0 1 15 0Z" stroke="currentColor" stroke-width="1.45" opacity=".9"/></svg>
+            </span>
+            <input id="url" name="url" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=...  (NPTEL lectures work great)" spellcheck="false" required />
+            <button type="button" id="pasteBtn" class="ghost-btn mono">Paste</button>
+          </div>
+          <button type="submit" id="submitBtn" class="primary-btn">
+            <span class="btn-label">Extract</span>
+            <span class="btn-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="hint-row mono">
+          <span>Supports youtube.com, youtu.be, shorts &amp; embed links · Auto-detects video ID</span>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="error" class="error" role="alert" hidden></div>
+      </form>
+
+      <div class="examples mono">
+        <span class="examples-label">Try:</span>
+        <button type="button" class="chip" data-example="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Example link</button>
+        <button type="button" class="chip" data-example="https://youtu.be/jNQXAC9IVRw">youtu.be</button>
+        <button type="button" class="chip" data-example="https://www.youtube.com/shorts/9bZkp7q19f0">Shorts</button>
+        <span class="examples-sep">·</span>
+        <span class="mono" style="font-size:11px; color:var(--muted)">AI Study Pack is on-demand after transcript loads</span>
+      </div>
+    </section>
+
+    <section id="result" class="card result-card" hidden>
+      <div class="result-head">
+        <div class="result-title-wrap">
+          <div class="kicker mono">Video title</div>
+          <h2 id="videoTitle" class="video-title"></h2>
+          <div class="meta mono" id="meta"></div>
+        </div>
+        <div class="result-actions">
+          <button type="button" id="copyBtn" class="secondary-btn mono"><span class="copy-ico">⧉</span> Copy</button>
+          <button type="button" id="copyTsBtn" class="secondary-btn mono">Copy with timestamps</button>
+          <button type="button" id="downloadBtn" class="secondary-btn mono">Download .txt</button>
+          <a id="openYt" class="secondary-btn mono" target="_blank" rel="noopener">Open on YouTube ↗</a>
+        </div>
+      </div>
+
+      <div class="tabs mono" role="tablist" aria-label="Transcript view">
+        <button role="tab" aria-selected="true" data-tab="plain" class="tab is-active">Plain text</button>
+        <button role="tab" aria-selected="false" data-tab="timestamped" class="tab">Timestamps</button>
+        <button role="tab" aria-selected="false" data-tab="segments" class="tab">Segments</button>
+      </div>
+
+      <div class="transcript-wrap">
+        <pre id="transcriptText" class="transcript plain"></pre>
+        <pre id="transcriptTs" class="transcript ts" hidden></pre>
+        <div id="segmentsList" class="segments" hidden></div>
+      </div>
+
+      <div class="foot mono">
+        <span id="footStats"></span>
+        <button type="button" id="clearBtn" class="link-btn mono">Clear &amp; new link →</button>
+      </div>
+    </section>
+
+    <!-- AI STUDY TOOLKIT -->
+    <section id="aiCard" class="card ai-card" hidden>
+      <div class="ai-head">
+        <div>
+          <div class="kicker mono">✨ AI Study Companion — powered by Gemini</div>
+          <h2 class="ai-title">Turn this lecture into exam-ready material</h2>
+          <p class="ai-sub mono">Structured notes · Two summaries · Glossary · MCQs · Ask-the-Lecture chat. Grounded only in this transcript.</p>
+        </div>
+        <div class="ai-cta">
+          <button type="button" id="generateBtn" class="primary-btn ai-generate">
+            <span class="btn-label">✨ Generate AI Study Notes</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <div id="aiStatus" class="mono ai-status" role="status" aria-live="polite"></div>
+          <div id="aiError" class="error" role="alert" hidden></div>
+        </div>
+      </div>
+
+      <div id="aiSkeleton" class="ai-skeleton" hidden aria-hidden="true">
+        <div class="skel-line w90"></div><div class="skel-line w70"></div><div class="skel-line w85"></div>
+        <div class="skel-block"></div><div class="skel-block"></div>
+      </div>
+
+      <div id="aiContent" hidden>
+        <div class="tabs mono ai-tabs" role="tablist" aria-label="AI Study views">
+          <button role="tab" aria-selected="true" data-ai-tab="notes" class="tab is-active">Structured Notes</button>
+          <button role="tab" aria-selected="false" data-ai-tab="summary" class="tab">Summary</button>
+          <button role="tab" aria-selected="false" data-ai-tab="glossary" class="tab">Glossary</button>
+          <button role="tab" aria-selected="false" data-ai-tab="quiz" class="tab">Quiz (MCQs)</button>
+          <button role="tab" aria-selected="false" data-ai-tab="chat" class="tab">Ask the Lecture</button>
+        </div>
+
+        <div class="ai-panels">
+          <div id="aiPanelNotes" class="ai-panel" data-panel="notes"></div>
+          <div id="aiPanelSummary" class="ai-panel" data-panel="summary" hidden></div>
+          <div id="aiPanelGlossary" class="ai-panel" data-panel="glossary" hidden></div>
+          <div id="aiPanelQuiz" class="ai-panel" data-panel="quiz" hidden></div>
+          <div id="aiPanelChat" class="ai-panel" data-panel="chat" hidden>
+            <div id="chatLog" class="chat-log"></div>
+            <form id="chatForm" class="chat-form" autocomplete="off">
+              <input id="chatInput" class="chat-input" type="text" placeholder="Ask anything from this lecture… e.g. 'Explain topic 3 for 5 marks'" />
+              <button type="submit" id="chatSend" class="secondary-btn mono">Send</button>
+            </form>
+            <div class="mono chat-hint">Answers are grounded only in this transcript. Try: “Give me a 5-mark answer for …”</div>
+          </div>
+        </div>
+
+        <div class="ai-foot mono">
+          <button type="button" id="copyStudyPackBtn" class="secondary-btn mono">Copy Study Pack</button>
+          <button type="button" id="downloadMdBtn" class="secondary-btn mono">Download Study Pack .md</button>
+          <span id="aiFootMeta" class="ai-foot-meta"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <article class="feat"><div class="feat-ico">✨</div><h3>AI-Structured Notes</h3><p>Topic-wise sections with timestamp pills — Overview → Concepts → Formulas → Conclusion.</p></article>
+      <article class="feat"><div class="feat-ico">⚡</div><h3>TL;DR + Detailed Summary</h3><p>30-sec bullets for last-day revision + exam-length detailed coverage of every subtopic.</p></article>
+      <article class="feat"><div class="feat-ico">◐</div><h3>Lightweight &amp; Premium</h3><p>No heavy frameworks. Instant paint, cached pack, on-demand — respects your Gemini quota.</p></article>
+    </section>
+
+    <section class="features" style="margin-top:12px">
+      <article class="feat"><div class="feat-ico">▦</div><h3>Glossary</h3><p>Key terms, definitions &amp; formulas extracted from the lecture — perfect for NPTEL MCQs.</p></article>
+      <article class="feat"><div class="feat-ico">◎</div><h3>Practice Quiz</h3><p>10–12 auto MCQs with answers &amp; explanations — self-test without rewatching.</p></article>
+      <article class="feat"><div class="feat-ico">💬</div><h3>Ask the Lecture</h3><p>Chat grounded only in the transcript. “Explain again for 5 marks” — instantly.</p></article>
+    </section>
+
+    <footer class="footer mono">Built for NPTEL prep · TranscriptGen · Tip: <kbd>⌘</kbd> + <kbd>V</kbd> → <kbd>↵</kbd> to extract, then <kbd>✨ Generate</kbd></footer>
+  </main>
+
+  <div id="toast" class="toast mono" role="status" aria-live="polite" hidden></div>
+
+  <script src="./app.js"></script>
+  <script src="./ai.js"></script>
+</body>
+</html>
