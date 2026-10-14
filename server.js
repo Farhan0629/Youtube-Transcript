@@ -88,6 +88,59 @@ setInterval(() => {
   for (const [k, v] of aiHits) if (now > v.resetAt) aiHits.delete(k);
 }, 60_000).unref?.();
 
+// ---- Robust transcript fetcher: tries library then direct Innertube clients ----
+async function fetchTranscriptRobust(videoId, wantedLang, YT) {
+  let lastErr = null;
+  // 1) library with requested lang
+  try { return await YT.fetchTranscript(videoId, { lang: wantedLang }); } catch (e) {
+    lastErr = e;
+    const m = String(e?.message || '');
+    const isLangIssue = m.includes('Available languages') || m.toLowerCase().includes('not available');
+    const isDisabled = /disabled|no transcripts/i.test(m);
+    if (!isLangIssue && !isDisabled) throw e;
+    if (isLangIssue) {
+      try { return await YT.fetchTranscript(videoId); } catch (e2) { lastErr = e2; }
+    }
+  }
+  // 2) library without lang (covers auto-generated)
+  if (wantedLang !== 'en') {
+    try { return await YT.fetchTranscript(videoId); } catch (e) { lastErr = e; }
+  }
+  // 3) direct Innertube with multiple clients — bypasses library's single-client + HTML scrape fallbacks
+  //    Vercel IPs sometimes get empty captionTracks for one client but succeed with another (seen: WEB=UNPLAYABLE, ANDROID=OK locally, but Vercel bom1 may differ).
+  const innertubeClients = [
+    { name: 'ANDROID', version: '20.10.38', ua: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)' },
+    { name: 'IOS', version: '20.42.6', ua: 'com.google.ios.youtube/20.42.6 (iPhone14,3; U; CPU iOS 18_0 like Mac OS X)' },
+    { name: 'MWEB', version: '2.20240726.01.00', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+  ];
+  for (const c of innertubeClients) {
+    try {
+      const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': c.ua },
+        body: JSON.stringify({ context: { client: { clientName: c.name, clientVersion: c.version } }, videoId }),
+        signal: AbortSignal.timeout(7000),
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (!Array.isArray(tracks) || !tracks.length) continue;
+      const track = tracks.find(t => t.languageCode === wantedLang) || tracks.find(t => t.languageCode === 'en') || tracks[0];
+      if (!track?.baseUrl) continue;
+      const tr = await fetch(track.baseUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36' },
+        signal: AbortSignal.timeout(7000),
+      });
+      if (!tr.ok) continue;
+      const xml = await tr.text();
+      if (!xml || xml.length < 20) continue;
+      const parsed = YT.parseTranscriptXml(xml, track.languageCode || wantedLang);
+      if (parsed && parsed.length) return parsed;
+    } catch (_) { continue; }
+  }
+  throw lastErr || new Error('Failed to fetch transcript after all fallbacks');
+}
+
 // ---- API: transcript (unchanged core) ----
 app.post('/api/transcript', async (req, res) => {
   const t0 = Date.now();
@@ -109,17 +162,7 @@ app.post('/api/transcript', async (req, res) => {
 
   try {
     const titlePromise = fetchTitle(videoId, url);
-    const transcriptPromise = (async () => {
-      try {
-        return await YT.fetchTranscript(videoId, { lang: wantedLang });
-      } catch (e) {
-        const msg = String(e?.message || '');
-        if (msg.includes('Available languages') || msg.toLowerCase().includes('not available')) {
-          return await YT.fetchTranscript(videoId);
-        }
-        throw e;
-      }
-    })();
+    const transcriptPromise = fetchTranscriptRobust(videoId, wantedLang, YT);
 
     const [title, raw] = await Promise.all([titlePromise, transcriptPromise]);
     if (!raw || !raw.length) return res.status(404).json({ error: 'No transcript found for this video.' });
@@ -188,7 +231,7 @@ app.post('/api/ai/study-pack', aiRateLimit, async (req, res) => {
     }
     try {
       if (!finalTitle) finalTitle = (await fetchTitle(vid, url)) || finalTitle;
-      const raw = await YT.fetchTranscript(vid, { lang: 'en' }).catch(() => YT.fetchTranscript(vid));
+      const raw = await fetchTranscriptRobust(vid, 'en', YT);
       const segs = raw.map(s => ({
         text: (s.text || '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim(),
         offset: Number(s.offset ?? 0),
@@ -228,7 +271,7 @@ app.post('/api/ai/chat', aiRateLimit, async (req, res) => {
       YT = m.YoutubeTranscript;
     }
     try {
-      const raw = await YT.fetchTranscript(String(videoId), { lang: 'en' }).catch(() => YT.fetchTranscript(String(videoId)));
+      const raw = await fetchTranscriptRobust(String(videoId), 'en', YT);
       finalText = raw.map(s => (s.text || '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim()).join(' ');
       if (!finalTitle) finalTitle = (await fetchTitle(String(videoId))) || '';
     } catch (_) {
