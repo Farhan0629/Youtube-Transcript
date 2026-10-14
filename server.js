@@ -175,9 +175,11 @@ async function fetchViaInnertube(videoId, wantedLang, YT) {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(7000),
       });
+      console.log(`[INNERTUBE] ${c.name} player status: ${r.status}`);
       if (!r.ok) continue;
       const data = await r.json();
       const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      console.log(`[INNERTUBE] ${c.name} tracks: ${tracks?.length || 0}`);
       if (!Array.isArray(tracks) || !tracks.length) continue;
       // Prefer requested lang, otherwise en, otherwise first track (handles auto-generated)
       const track = tracks.find(t => t.languageCode === wantedLang) || tracks.find(t => t.languageCode === 'en') || tracks[0];
@@ -187,12 +189,18 @@ async function fetchViaInnertube(videoId, wantedLang, YT) {
         headers: { 'User-Agent': c.ua, 'Accept-Language': 'en-US,en;q=0.9' },
         signal: AbortSignal.timeout(7000),
       });
+      console.log(`[INNERTUBE] ${c.name} timedtext status: ${tr.status}`);
       if (!tr.ok) continue;
       const xml = await tr.text();
+      console.log(`[INNERTUBE] ${c.name} timedtext xml length: ${xml?.length || 0}`);
       if (!xml || xml.length < 20) continue;
       const parsed = YT.parseTranscriptXml(xml, track.languageCode || wantedLang);
+      console.log(`[INNERTUBE] ${c.name} parsed items: ${parsed?.length || 0}`);
       if (parsed && parsed.length) return parsed;
-    } catch (_) { continue; }
+    } catch (e) { 
+      console.error(`[INNERTUBE_ERR] ${c.name}: ${e.message}`);
+      continue; 
+    }
   }
   return null;
 }
@@ -282,6 +290,7 @@ app.post('/api/transcript', async (req, res) => {
       elapsedMs: elapsed,
     });
   } catch (err) {
+    console.error('[TRANSCRIPT_CATCH]', err?.message, err?.stack);
     const msg = err?.message || 'Failed to fetch transcript.';
     let status = 500;
     let friendly = msg.replace(/^\[YoutubeTranscript\]\s*🚨\s*/, '');
