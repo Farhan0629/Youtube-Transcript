@@ -220,6 +220,46 @@ a{color:inherit}
 .toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:rgba(18,18,22,.92); color:var(--text); border:1px solid var(--line);
   padding:10px 14px; border-radius:999px; box-shadow:var(--shadow); font-size:12px; z-index:50}
 
+/* ==========================================================================
+   BATCH TRANSCRIPTS STYLING (Web Version)
+   ========================================================================== */
+.batch-intro{font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:10px}
+.batch-intro b{color:var(--lime)}
+.batch-action-row{flex-wrap:wrap; align-items:center; gap:10px; margin-top:10px}
+
+/* Progress bar */
+.batch-progress-wrap{margin-top:14px; padding:12px 14px; border-radius:14px; background:rgba(10,11,16,.55); border:1px solid var(--line-2)}
+.batch-progress-info{display:flex; justify-content:space-between; gap:10px; font-size:12px; color:#e9e7f0; margin-bottom:8px}
+.batch-progress-track{width:100%; height:8px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden}
+.batch-progress-fill{height:100%; border-radius:999px; background:linear-gradient(90deg, #ff3b30, #ff8a3d, #d6ff57); transition:width .25s ease-out}
+
+/* Batch Results Card */
+.batch-result-card{margin-top:18px; padding:18px}
+.batch-notice{margin:12px 0 16px; padding:10px 14px; border-radius:12px; background:rgba(214,255,87,.08); border:1px solid rgba(214,255,87,.20); color:#e9e7f0; font-size:12px; line-height:1.5}
+.batch-notice b{color:var(--lime)}
+
+.batch-items-list{display:grid; gap:12px; margin-top:8px}
+.batch-card{border:1px solid var(--line); background:rgba(255,255,255,.04); border-radius:16px; overflow:hidden; transition:border-color .15s ease}
+.batch-card:hover{border-color:var(--line-2)}
+.batch-card.has-error{border-color:rgba(255,59,48,.35); background:rgba(255,59,48,.04)}
+
+.batch-card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:14px 16px; cursor:pointer; user-select:none}
+.batch-card-info{min-width:0; flex:1}
+.batch-card-index{font-family:"JetBrains Mono", monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.batch-card-title{font-size:15px; font-weight:700; line-height:1.35; margin:4px 0 6px; letter-spacing:-.01em}
+.batch-card-meta{display:flex; gap:10px; font-size:12px; color:var(--muted); flex-wrap:wrap}
+.batch-card-meta b{color:var(--text)}
+
+.batch-card-actions{display:flex; align-items:center; gap:8px; flex-shrink:0}
+.batch-status-pill{font-family:"JetBrains Mono", monospace; font-size:11px; padding:4px 9px; border-radius:999px; border:1px solid transparent}
+.batch-status-pill.ready{background:rgba(214,255,87,.12); color:#d6ff57; border-color:rgba(214,255,87,.25)}
+.batch-status-pill.failed{background:rgba(255,59,48,.12); color:#ffd1ce; border-color:rgba(255,59,48,.28)}
+.batch-status-pill.loading{background:rgba(255,255,255,.10); color:#ffffff; border-color:rgba(255,255,255,.20)}
+
+.batch-card-toggle{font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid var(--line)}
+.batch-card-body{padding:0 16px 16px; border-top:1px solid rgba(255,255,255,.06); animation:fadeIn .18s ease}
+.batch-card-body .transcript{margin-top:12px; max-height:280px}
+
 /* responsive */
 @media (max-width: 860px){
   .topbar{padding-top:14px}
@@ -247,4 +287,10 @@ a{color:inherit}
   .section-bullets, .tldr-list, .detailed, .chat-msg{color:#1a1a22}
   .detailed{background:rgba(255,255,255,.9)}
   .chat-msg.assistant{background:rgba(255,255,255,.92)}
+  .batch-card{background:rgba(255,255,255,.85)}
+  .batch-card-title{color:#13131a}
+  .batch-notice{background:rgba(214,255,87,.22); color:#1a1a22}
+  .batch-notice b{color:#007a22}
+  .batch-progress-wrap{background:rgba(255,255,255,.85)}
+  .batch-progress-info{color:#1a1a22}
 }

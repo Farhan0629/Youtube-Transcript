@@ -8,6 +8,7 @@ const pasteBtn = document.getElementById('pasteBtn');
 // Mode Switcher & Paste form elements
 const tabModeUrl = document.getElementById('tabModeUrl');
 const tabModePaste = document.getElementById('tabModePaste');
+const tabModeBatch = document.getElementById('tabModeBatch');
 const pasteForm = document.getElementById('pasteForm');
 const pasteTitleInput = document.getElementById('pasteTitle');
 const pastedTextInput = document.getElementById('pastedText');
@@ -15,6 +16,31 @@ const submitPasteBtn = document.getElementById('submitPasteBtn');
 const pasteClipboardBtn = document.getElementById('pasteClipboardBtn');
 const pasteStatusEl = document.getElementById('pasteStatus');
 const pasteErrorEl = document.getElementById('pasteError');
+
+// Batch Form & Result elements
+const batchForm = document.getElementById('batchForm');
+const batchUrlsInput = document.getElementById('batchUrls');
+const submitBatchBtn = document.getElementById('submitBatchBtn');
+const batchPasteClipBtn = document.getElementById('batchPasteClipBtn');
+const batchSampleBtn = document.getElementById('batchSampleBtn');
+const batchClearInputBtn = document.getElementById('batchClearInputBtn');
+const batchCountText = document.getElementById('batchCountText');
+const batchProgressWrap = document.getElementById('batchProgressWrap');
+const batchProgressLabel = document.getElementById('batchProgressLabel');
+const batchProgressPercent = document.getElementById('batchProgressPercent');
+const batchProgressBar = document.getElementById('batchProgressBar');
+const batchStatusEl = document.getElementById('batchStatus');
+const batchErrorEl = document.getElementById('batchError');
+
+const batchResult = document.getElementById('batchResult');
+const batchMainTitle = document.getElementById('batchMainTitle');
+const batchMeta = document.getElementById('batchMeta');
+const downloadBatchAllBtn = document.getElementById('downloadBatchAllBtn');
+const copyBatchAllBtn = document.getElementById('copyBatchAllBtn');
+const clearBatchResultBtn = document.getElementById('clearBatchResultBtn');
+const batchItemsList = document.getElementById('batchItemsList');
+const batchFootStats = document.getElementById('batchFootStats');
+const scrollUpBatchBtn = document.getElementById('scrollUpBatchBtn');
 
 const result = document.getElementById('result');
 const videoTitleEl = document.getElementById('videoTitle');
@@ -44,30 +70,41 @@ window.toast = toast;
 
 function switchMode(mode){
   if (!tabModeUrl || !tabModePaste) return;
-  if (mode === 'url'){
-    tabModeUrl.classList.add('is-active');
-    tabModeUrl.setAttribute('aria-selected', 'true');
-    tabModePaste.classList.remove('is-active');
-    tabModePaste.setAttribute('aria-selected', 'false');
-    form.hidden = false;
-    if (pasteForm) pasteForm.hidden = true;
-    urlInput.focus();
+  const tabs = [
+    { name: 'url', btn: tabModeUrl, el: form, focusEl: urlInput },
+    { name: 'paste', btn: tabModePaste, el: pasteForm, focusEl: pastedTextInput },
+    { name: 'batch', btn: tabModeBatch, el: batchForm, focusEl: batchUrlsInput },
+  ];
+
+  tabs.forEach(t => {
+    if (!t.btn || !t.el) return;
+    const isTarget = t.name === mode;
+    t.btn.classList.toggle('is-active', isTarget);
+    t.btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+    t.el.hidden = !isTarget;
+    if (isTarget && t.focusEl) t.focusEl.focus();
+  });
+
+  // When switching modes, hide contrasting result areas to prevent visual confusion
+  if (mode === 'batch') {
+    if (result) result.hidden = true;
+    const aiCard = document.getElementById('aiCard');
+    if (aiCard) aiCard.hidden = true;
+    if (batchResults.length && batchResult) batchResult.hidden = false;
   } else {
-    tabModePaste.classList.add('is-active');
-    tabModePaste.setAttribute('aria-selected', 'true');
-    tabModeUrl.classList.remove('is-active');
-    tabModeUrl.setAttribute('aria-selected', 'false');
-    form.hidden = true;
-    if (pasteForm) pasteForm.hidden = false;
-    if (pastedTextInput) pastedTextInput.focus();
+    if (batchResult) batchResult.hidden = true;
+    if (window.__transcriptState?.last && result) {
+      result.hidden = false;
+      const aiCard = document.getElementById('aiCard');
+      if (aiCard) aiCard.hidden = false;
+    }
   }
 }
 window.switchMode = switchMode;
 
-if (tabModeUrl && tabModePaste) {
-  tabModeUrl.addEventListener('click', () => switchMode('url'));
-  tabModePaste.addEventListener('click', () => switchMode('paste'));
-}
+if (tabModeUrl) tabModeUrl.addEventListener('click', () => switchMode('url'));
+if (tabModePaste) tabModePaste.addEventListener('click', () => switchMode('paste'));
+if (tabModeBatch) tabModeBatch.addEventListener('click', () => switchMode('batch'));
 
 function setLoading(v){
   submitBtn.classList.toggle('is-loading', v);

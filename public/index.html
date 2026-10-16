@@ -47,6 +47,7 @@
       <div class="mode-tabs mono" role="tablist">
         <button type="button" id="tabModeUrl" class="mode-tab is-active" aria-selected="true">🔗 YouTube URL</button>
         <button type="button" id="tabModePaste" class="mode-tab" aria-selected="false">📋 Paste Transcript / Notes</button>
+        <button type="button" id="tabModeBatch" class="mode-tab" aria-selected="false">📚 Batch URLs (No Limit)</button>
       </div>
 
       <form id="form" autocomplete="off" novalidate>
@@ -100,6 +101,44 @@
           <span id="pasteStatus" class="status" role="status" aria-live="polite"></span>
         </div>
         <div id="pasteError" class="error" role="alert" hidden></div>
+      </form>
+
+      <form id="batchForm" autocomplete="off" novalidate hidden>
+        <div class="batch-intro mono">
+          <span>Paste multiple YouTube links (one per line, comma or space-separated). Extracts all transcripts with timestamps &amp; proper headings into a single downloadable file. <b>No limit on videos.</b></span>
+        </div>
+        <div class="paste-textarea-wrap">
+          <textarea id="batchUrls" rows="7" class="paste-textarea mono" placeholder="Paste YouTube links here (unlimited), for example:&#10;https://www.youtube.com/watch?v=7ZQbS0bCMlg&#10;https://youtu.be/dQw4w9WgXcQ&#10;https://www.youtube.com/watch?v=jNQXAC9IVRw" required></textarea>
+        </div>
+        <div class="input-row batch-action-row">
+          <button type="submit" id="submitBatchBtn" class="primary-btn">
+            <span class="btn-label">Extract All Transcripts</span>
+            <span class="btn-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" id="batchPasteClipBtn" class="ghost-btn mono">Paste from Clipboard</button>
+          <button type="button" id="batchSampleBtn" class="ghost-btn mono">Sample 3 Links</button>
+          <button type="button" id="batchClearInputBtn" class="ghost-btn mono">Clear</button>
+          <span id="batchCountBadge" class="pill mono"><span class="pill-dot"></span> <span id="batchCountText">0 links detected</span></span>
+        </div>
+
+        <div id="batchProgressWrap" class="batch-progress-wrap" hidden>
+          <div class="batch-progress-info mono">
+            <span id="batchProgressLabel">Extracting transcripts…</span>
+            <span id="batchProgressPercent">0%</span>
+          </div>
+          <div class="batch-progress-track">
+            <div id="batchProgressBar" class="batch-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="hint-row mono">
+          <span>⚡ Clean transcripts with timestamps · Zero AI overhead · Infinite batching · 1 compiled file</span>
+          <span id="batchStatus" class="status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="batchError" class="error" role="alert" hidden></div>
       </form>
 
       <div class="examples mono">
@@ -197,6 +236,38 @@
           <button type="button" id="downloadMdBtn" class="secondary-btn mono">Download Study Pack .md</button>
           <span id="aiFootMeta" class="ai-foot-meta"></span>
         </div>
+      </div>
+    </section>
+
+    <!-- BATCH TRANSCRIPTS RESULT CARD -->
+    <section id="batchResult" class="card result-card batch-result-card" hidden>
+      <div class="result-head">
+        <div class="result-title-wrap">
+          <div class="kicker mono">Batch Collection Ready</div>
+          <h2 id="batchMainTitle" class="video-title">Batch Transcripts</h2>
+          <div class="meta mono" id="batchMeta"></div>
+        </div>
+        <div class="result-actions">
+          <button type="button" id="downloadBatchAllBtn" class="primary-btn mono" style="background:linear-gradient(135deg,#d6ff57,#27c93f); color:#0a0b10; font-weight:800">
+            📥 Download Combined .txt (All with Timestamps)
+          </button>
+          <button type="button" id="copyBatchAllBtn" class="secondary-btn mono">
+            <span class="copy-ico">⧉</span> Copy All Transcripts
+          </button>
+          <button type="button" id="clearBatchResultBtn" class="link-btn mono">Clear batch →</button>
+        </div>
+      </div>
+
+      <div class="batch-notice mono">
+        <span>✨ All transcripts below include proper video headings, duration, and timestamped lines. Click any video card to expand/collapse. The download button compiles everything into a single formatted <b>.txt</b> file.</span>
+      </div>
+
+      <!-- Container of all extracted video transcripts -->
+      <div id="batchItemsList" class="batch-items-list"></div>
+
+      <div class="foot mono">
+        <span id="batchFootStats"></span>
+        <button type="button" id="scrollUpBatchBtn" class="link-btn mono">↑ Back to top</button>
       </div>
     </section>
 

@@ -8,7 +8,11 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  allowedHeaders: ['Content-Type', 'x-gemini-key', 'x-gemini-model'],
+  exposedHeaders: ['Content-Type'],
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
   console.log(`[REQ] ${req.method} ${req.url} (original: ${req.originalUrl})`);
@@ -425,6 +429,10 @@ function getGemini() {
 
 app.post('/api/ai/study-pack', aiRateLimit, async (req, res) => {
   const { url, videoId: vidRaw, text, title, segments } = req.body || {};
+  const headerKey = (req.headers['x-gemini-key'] || '').toString().trim();
+  const headerModelRaw = (req.headers['x-gemini-model'] || '').toString().trim();
+  const apiKeyOverride = /^AIza[0-9A-Za-z_-]{30,}$/.test(headerKey) ? headerKey : '';
+  const modelOverride = apiKeyOverride && /^gemini-[a-z0-9.-]+$/i.test(headerModelRaw) ? headerModelRaw : '';
   let vid = (vidRaw || (url ? extractVideoId(url) : null) || '').trim();
   let finalText = typeof text === 'string' ? text : '';
   let finalTitle = typeof title === 'string' ? title : '';
@@ -459,7 +467,7 @@ app.post('/api/ai/study-pack', aiRateLimit, async (req, res) => {
 
   try {
     const { generateStudyPack, mapGeminiError } = getGemini();
-    const pack = await generateStudyPack({ title: finalTitle, text: finalText, segments: finalSegments, videoId: vid });
+    const pack = await generateStudyPack({ title: finalTitle, text: finalText, segments: finalSegments, videoId: vid, apiKeyOverride: apiKeyOverride || undefined, modelOverride: modelOverride || undefined });
     res.json({ videoId: vid || null, ...pack });
   } catch (err) {
     const mapped = getGemini().mapGeminiError(err);
@@ -469,6 +477,10 @@ app.post('/api/ai/study-pack', aiRateLimit, async (req, res) => {
 
 app.post('/api/ai/chat', aiRateLimit, async (req, res) => {
   const { text, question, history, title, videoId } = req.body || {};
+  const headerKey2 = (req.headers['x-gemini-key'] || '').toString().trim();
+  const headerModel2 = (req.headers['x-gemini-model'] || '').toString().trim();
+  const apiKeyOverride2 = /^AIza[0-9A-Za-z_-]{30,}$/.test(headerKey2) ? headerKey2 : '';
+  const modelOverride2 = apiKeyOverride2 && /^gemini-[a-z0-9.-]+$/i.test(headerModel2) ? headerModel2 : '';
   let finalText = typeof text === 'string' ? text : '';
   let finalTitle = typeof title === 'string' ? title : '';
 
@@ -495,7 +507,7 @@ app.post('/api/ai/chat', aiRateLimit, async (req, res) => {
 
   try {
     const { chatWithLecture, mapGeminiError } = getGemini();
-    const out = await chatWithLecture({ text: finalText, question: String(question), history: Array.isArray(history) ? history : [], title: finalTitle });
+    const out = await chatWithLecture({ text: finalText, question: String(question), history: Array.isArray(history) ? history : [], title: finalTitle, apiKeyOverride: apiKeyOverride2 || undefined, modelOverride: modelOverride2 || undefined });
     res.json(out);
   } catch (err) {
     const mapped = getGemini().mapGeminiError(err);

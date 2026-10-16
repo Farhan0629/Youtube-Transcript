@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 440" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0b10" />
+      <stop offset="50%" stop-color="#0e0f18" />
+      <stop offset="100%" stop-color="#07080c" />
+    </linearGradient>
+
+    <!-- Glowing Orbs -->
+    <radialGradient id="orbRed" cx="20%" cy="30%" r="55%">
+      <stop offset="0%" stop-color="#ff3b30" stop-opacity="0.32" />
+      <stop offset="65%" stop-color="#ff3b30" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#0a0b10" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="orbLime" cx="85%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#d6ff57" stop-opacity="0.18" />
+      <stop offset="60%" stop-color="#d6ff57" stop-opacity="0.03" />
+      <stop offset="100%" stop-color="#0a0b10" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="orbViolet" cx="50%" cy="110%" r="65%">
+      <stop offset="0%" stop-color="#7c5cff" stop-opacity="0.22" />
+      <stop offset="70%" stop-color="#7c5cff" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Accent Gradients -->
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff3b30" />
+      <stop offset="50%" stop-color="#ff6b35" />
+      <stop offset="100%" stop-color="#ffa336" />
+    </linearGradient>
+
+    <linearGradient id="markGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff3b30" />
+      <stop offset="100%" stop-color="#ff6b35" />
+    </linearGradient>
+
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.03" />
+    </linearGradient>
+
+    <!-- Grid Pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1" />
+    </pattern>
+
+    <!-- Soft Drop Shadow -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="24" flood-color="#ff3b30" flood-opacity="0.38" />
+    </filter>
+
+    <filter id="badgeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#d6ff57" flood-opacity="0.28" />
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 58px; fill: #ffffff; letter-spacing: -0.03em; }
+    .subtitle { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 500; font-size: 21px; fill: #b8b6c4; letter-spacing: -0.01em; }
+    .badge-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.12em; fill: #d6ff57; }
+    .card-title { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px; fill: #ffffff; }
+    .card-sub { font-family: ui-monospace, monospace; font-size: 11.5px; fill: #8a8898; letter-spacing: 0.04em; }
+    .card-pill { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; fill: #d6ff57; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1280" height="440" fill="url(#bg)" />
+
+  <!-- Grid Overlay -->
+  <rect width="1280" height="440" fill="url(#grid)" />
+
+  <!-- Ambient Glowing Orbs -->
+  <rect width="1280" height="440" fill="url(#orbRed)" />
+  <rect width="1280" height="440" fill="url(#orbLime)" />
+  <rect width="1280" height="440" fill="url(#orbViolet)" />
+
+  <!-- Outer Border Frame -->
+  <rect x="1" y="1" width="1278" height="438" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2" />
+
+  <!-- LEFT COLUMN: Brand, Title, Badges -->
+  <g transform="translate(80, 72)">
+    <!-- Brand Mark Icon -->
+    <g filter="url(#glow)">
+      <rect x="0" y="0" width="56" height="56" rx="16" fill="url(#markGrad)" />
+      <!-- Stylized Play + Doc icon -->
+      <path d="M 28 16 C 36 16 42 19 45 25 C 45.8 26.5 45.8 28.5 45 30 C 42 36 36 39 28 39 C 20 39 14 36 11 30 C 10.2 28.5 10.2 26.5 11 25 C 14 19 20 16 28 16 Z" fill="#ffffff" fill-opacity="0.95" />
+      <path d="M 22 24 L 29 24 M 22 28 L 34 28 M 22 32 L 27 32" stroke="#ff3b30" stroke-width="2" stroke-linecap="round" />
+      <circle cx="44" cy="12" r="5" fill="#d6ff57" stroke="#0a0b10" stroke-width="2" filter="url(#badgeGlow)" />
+    </g>
+
+    <!-- Category Pill -->
+    <g transform="translate(74, 12)">
+      <rect x="0" y="0" width="370" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.12" />
+      <circle cx="16" cy="16" r="4.5" fill="#d6ff57" />
+      <text x="29" y="21" class="badge-text">STUDY COMPANION  ·  AI EXAM PACK</text>
+    </g>
+
+    <!-- Main Title -->
+    <g transform="translate(0, 94)">
+      <text x="0" y="44" class="title">Transcript<tspan fill="url(#textGrad)">Gen</tspan></text>
+      <text x="0" y="86" class="subtitle">YouTube Lectures → Instant Transcripts &amp; AI Exam Notes</text>
+    </g>
+
+    <!-- Feature Pills -->
+    <g transform="translate(0, 222)">
+      <!-- Pill 1: Web App -->
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="144" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.12" />
+        <text x="20" y="22" font-family="'Inter', sans-serif" font-size="12.5px" font-weight="600" fill="#f5f3ef">🌐 Web App</text>
+      </g>
+      <!-- Pill 2: Chrome Extension -->
+      <g transform="translate(154, 0)">
+        <rect x="0" y="0" width="194" height="34" rx="17" fill="#ffffff" fill-opacity="0.08" stroke="rgba(255, 59, 48, 0.4)" />
+        <text x="18" y="22" font-family="'Inter', sans-serif" font-size="12.5px" font-weight="700" fill="#ffffff">🧩 Chrome Extension</text>
+      </g>
+      <!-- Pill 3: Gemini Powered -->
+      <g transform="translate(358, 0)">
+        <rect x="0" y="0" width="168" height="34" rx="17" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.12" />
+        <text x="18" y="22" font-family="'Inter', sans-serif" font-size="12.5px" font-weight="600" fill="#d6ff57">✨ Gemini Powered</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- RIGHT COLUMN: Visual Feature Card Mockup -->
+  <g transform="translate(730, 60)">
+    <!-- Container Card (Glassmorphism) -->
+    <rect x="0" y="0" width="470" height="315" rx="20" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.13" stroke-width="1.5" />
+
+    <!-- Card Header -->
+    <g transform="translate(24, 20)">
+      <circle cx="8" cy="8" r="5" fill="#ff5f56" />
+      <circle cx="26" cy="8" r="5" fill="#ffbd2e" />
+      <circle cx="44" cy="8" r="5" fill="#27c93f" />
+      <text x="66" y="12" class="card-sub">AI STUDY PACK — BGP PROTOCOL LEC 14</text>
+    </g>
+
+    <!-- Mini Feature Item 1: Structured Notes -->
+    <g transform="translate(24, 58)">
+      <rect x="0" y="0" width="422" height="66" rx="12" fill="#000000" fill-opacity="0.38" stroke="#ffffff" stroke-opacity="0.08" />
+      <rect x="14" y="14" width="46" height="20" rx="6" fill="#d6ff57" fill-opacity="0.14" stroke="#d6ff57" stroke-opacity="0.3" />
+      <text x="21" y="28" class="card-pill">00:16</text>
+      <text x="70" y="29" class="card-title">1. Overview of Border Gateway Protocol (BGP)</text>
+      <text x="16" y="50" font-family="'Inter', sans-serif" font-size="12px" fill="#b0afbc">• Exterior gateway protocol connecting autonomous systems (AS)</text>
+    </g>
+
+    <!-- Mini Feature Item 2: TL;DR + Quiz -->
+    <g transform="translate(24, 134)">
+      <rect x="0" y="0" width="204" height="74" rx="12" fill="#000000" fill-opacity="0.38" stroke="#ffffff" stroke-opacity="0.08" />
+      <text x="14" y="26" class="card-title">⚡ 30-Sec TL;DR</text>
+      <text x="14" y="46" font-family="'Inter', sans-serif" font-size="11px" fill="#9d9ca8">• Connects border routers</text>
+      <text x="14" y="62" font-family="'Inter', sans-serif" font-size="11px" fill="#9d9ca8">• Scales across ISP domains</text>
+    </g>
+
+    <g transform="translate(242, 134)">
+      <rect x="0" y="0" width="204" height="74" rx="12" fill="#000000" fill-opacity="0.38" stroke="#ffffff" stroke-opacity="0.08" />
+      <text x="14" y="26" class="card-title">◎ Practice Quiz</text>
+      <text x="14" y="46" font-family="'Inter', sans-serif" font-size="11px" fill="#9d9ca8">• Q1: Primary role of BGP?</text>
+      <text x="14" y="62" font-family="'Inter', sans-serif" font-size="11px" fill="#d6ff57">✓ Correct: Inter-AS routing</text>
+    </g>
+
+    <!-- Mini Feature Item 3: Floating / Draggable Bar -->
+    <g transform="translate(24, 220)">
+      <rect x="0" y="0" width="422" height="42" rx="10" fill="linear-gradient(90deg, rgba(255,59,48,0.18), rgba(214,255,87,0.12))" stroke="#ffffff" stroke-opacity="0.12" />
+      <text x="16" y="26" font-family="'Inter', sans-serif" font-size="12px" font-weight="600" fill="#f5f3ef">🗗 Floating Draggable Window  ·  Zoom 75%–160%  ·  Chat</text>
+    </g>
+
+    <!-- Status Line -->
+    <g transform="translate(26, 286)">
+      <circle cx="4" cy="4" r="3.5" fill="#d6ff57" />
+      <text x="16" y="8" font-family="ui-monospace, monospace" font-size="10.5px" fill="#888796">Local Server: http://localhost:3000  ·  CORS Enabled  ·  MV3</text>
+    </g>
+  </g>
+</svg>

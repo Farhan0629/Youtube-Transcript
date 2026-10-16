@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranscriptGen — Settings</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0a0b10; color:#f5f3ef; padding:20px; max-width:560px}
+    h1{font-size:18px; margin:0 0 6px; letter-spacing:-.02em}
+    .sub{color:#a9a7b3; font-size:12px; line-height:1.5; margin:0 0 16px}
+    .callout{background:rgba(214,255,87,.08); border:1px solid rgba(214,255,87,.18); border-radius:12px; padding:10px 12px; font-size:12px; line-height:1.5; margin:0 0 14px}
+    label{display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#a9a7b3; margin:14px 0 6px}
+    input{width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); color:#f5f3ef; border-radius:12px; padding:10px 12px; font-size:13px; outline:0}
+    input:focus{border-color:rgba(255,59,48,.45); box-shadow:0 0 0 3px rgba(255,59,48,.14)}
+    input::placeholder{color:#8b8896}
+    .hint{color:#85838f; font-size:11px; line-height:1.5; margin-top:6px}
+    .row{display:flex; gap:10px; margin-top:18px}
+    .btn{border-radius:999px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; border:0}
+    .primary{background:linear-gradient(135deg,#ff3b30,#ff6b35); color:#fff}
+    .ghost{border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#f5f3ef}
+    .status{margin-top:12px; font-size:12px; min-height:16px; color:#d6ff57}
+    .status.err{color:#ffd1ce}
+    code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:6px; font-size:11px}
+  </style>
+</head>
+<body>
+  <h1>TranscriptGen — Settings</h1>
+  <p class="sub">Zero-config for local dev: just run <code>npm start</code> and the extension uses <code>http://localhost:3000</code>. Only change the URL below when you deploy.</p>
+  <div class="callout">Default is <code>http://localhost:3000</code> — the popup and the YouTube on-page pill both use it automatically. Set a deployed Vercel URL here only after you push to production (it also falls back to localhost if the deployed host is down).</div>
+
+  <label for="apiBase">API Base URL <span style="text-transform:none; letter-spacing:0; color:#85838f; font-weight:400">(optional — defaults to localhost)</span></label>
+  <input id="apiBase" type="url" inputmode="url" placeholder="http://localhost:3000  — or https://your-app.vercel.app when deployed" spellcheck="false" />
+  <div class="hint">Do not add <code>/api</code> — the extension adds <code>/api/transcript</code> etc. itself. Leave empty to keep the local default.</div>
+
+  <label for="geminiKey">Personal Gemini API Key <span style="text-transform:none; letter-spacing:0; color:#85838f; font-weight:400">(optional — BYO key)</span></label>
+  <input id="geminiKey" type="password" placeholder="AIza...  (leave empty to use server key)" spellcheck="false" autocomplete="off" />
+  <div class="hint">If set, sent as <code>x-gemini-key</code> and used for AI instead of the server’s key. Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:#d6ff57">aistudio.google.com</a>.</div>
+
+  <label for="geminiModel">Gemini model override <span style="text-transform:none; letter-spacing:0; color:#85838f; font-weight:400">(optional)</span></label>
+  <input id="geminiModel" type="text" placeholder="gemini-3.8-flash  (leave empty for server default)" spellcheck="false" />
+  <div class="hint">Only used together with your personal key.</div>
+
+  <div class="row">
+    <button type="button" id="saveBtn" class="btn primary">Save</button>
+    <button type="button" id="testBtn" class="btn ghost">Test connection</button>
+    <button type="button" id="resetBtn" class="btn ghost" title="Clear and go back to http://localhost:3000">Reset to local</button>
+  </div>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranscriptGen — Study Companion</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="hdr" id="dragHeader">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2.5c4.2 0 7.5 1.6 9.2 4.7.4.7.4 1.6 0 2.3A11.2 11.2 0 0 1 12 14c-3.2 0-6.1-1.6-7.9-4.2a1.7 1.7 0 0 1 0-1.9C5.8 4.3 8.7 2.5 12 2.5Z" fill="currentColor"/>
+          <path d="M4.2 13.2c1.7 3.1 4.7 5 7.8 5 3.1 0 6.1-1.9 7.8-5a1 1 0 0 0 0-.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M8.5 10.2h3M8.5 12.2h4.2M8.5 14.2h2.6" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="name">TranscriptGen</span>
+      <span class="dot" title="Local server connected"></span>
+    </div>
+
+    <div class="hdr-actions">
+      <!-- Zoom controls: zoom out, reset, zoom in -->
+      <div class="zoom-group" title="Zoom notes & UI">
+        <button type="button" id="zoomOut" class="icon-btn zoom-btn" title="Zoom out (Ctrl -)" aria-label="Zoom out">－</button>
+        <button type="button" id="zoomReset" class="zoom-badge mono" title="Reset zoom (Ctrl 0)" aria-label="Reset zoom">100%</button>
+        <button type="button" id="zoomIn" class="icon-btn zoom-btn" title="Zoom in (Ctrl +)" aria-label="Zoom in">＋</button>
+      </div>
+
+      <!-- Pop out / Detach to floating draggable window -->
+      <button type="button" id="detachBtn" class="icon-btn" title="Detach into floating draggable window (place anywhere)" aria-label="Detach window">🗗</button>
+      <button type="button" id="openOptions" class="icon-btn" title="Settings" aria-label="Settings">⚙︎</button>
+      <button type="button" id="openWeb" class="icon-btn" title="Open web app" aria-label="Open web app">↗</button>
+    </div>
+  </header>
+
+  <div class="api-row mono">
+    <span id="apiBadge" class="api-badge">API: …</span>
+    <button type="button" id="useCurrentTab" class="link-btn mono">Use current tab URL</button>
+  </div>
+
+  <div class="mode-tabs mono" role="tablist">
+    <button type="button" id="tabUrl" class="mode-tab is-active" aria-selected="true">🔗 YouTube URL</button>
+    <button type="button" id="tabPaste" class="mode-tab" aria-selected="false">📋 Paste Transcript</button>
+  </div>
+
+  <form id="formUrl" autocomplete="off" novalidate>
+    <div class="input-wrap">
+      <span class="input-icon" aria-hidden="true">🔍</span>
+      <input id="url" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=..." spellcheck="false" required />
+      <button type="button" id="pasteBtn" class="ghost-btn mono">Paste</button>
+    </div>
+    <button type="submit" id="submitUrl" class="primary-btn">
+      <span class="btn-label">Extract transcript</span>
+      <span class="btn-spinner" aria-hidden="true"></span>
+    </button>
+    <div class="hint mono"><span id="statusUrl" class="status"></span></div>
+    <div id="errorUrl" class="error" hidden></div>
+    <div class="chips mono">
+      <button type="button" class="chip" data-ex="https://www.youtube.com/watch?v=7ZQbS0bCMlg">Test link</button>
+      <button type="button" class="chip" data-ex="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Example</button>
+      <button type="button" class="chip" data-ex="https://youtu.be/jNQXAC9IVRw">youtu.be</button>
+      <button type="button" class="chip" data-ex="https://www.youtube.com/shorts/9bZkp7q19f0">Shorts</button>
+    </div>
+  </form>
+
+  <form id="formPaste" autocomplete="off" novalidate hidden>
+    <input id="pasteTitle" type="text" placeholder="Title or YouTube link (optional)" spellcheck="false" />
+    <textarea id="pastedText" rows="5" placeholder="Paste transcript (from YouTube → …more → Show transcript) or notes…"></textarea>
+    <div class="row">
+      <button type="submit" id="submitPaste" class="primary-btn">
+        <span class="btn-label">Load transcript</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+      <button type="button" id="pasteClipBtn" class="ghost-btn mono">Paste from clipboard</button>
+    </div>
+    <div class="hint mono"><span id="statusPaste" class="status"></span></div>
+    <div id="errorPaste" class="error" hidden></div>
+  </form>
+
+  <!-- Transcript Result Card -->
+  <section id="result" class="card" hidden>
+    <div class="card-head">
+      <div class="kicker mono">Video</div>
+      <h2 id="videoTitle" class="title"></h2>
+      <div id="meta" class="meta mono"></div>
+    </div>
+    <div class="actions">
+      <button type="button" id="copyBtn" class="secondary-btn mono">Copy</button>
+      <button type="button" id="copyTsBtn" class="secondary-btn mono">Copy with timestamps</button>
+      <button type="button" id="downloadBtn" class="secondary-btn mono">Download .txt</button>
+      <a id="openYt" class="secondary-btn mono" target="_blank" rel="noopener">YouTube ↗</a>
+    </div>
+
+    <!-- Quick navigation tabs for transcript view -->
+    <div class="tabs mono transcript-tabs" role="tablist" aria-label="Transcript views">
+      <button role="tab" aria-selected="true" data-tab="plain" class="tab is-active">Plain</button>
+      <button role="tab" aria-selected="false" data-tab="ts" class="tab">Timestamps</button>
+      <button role="tab" aria-selected="false" data-tab="segs" class="tab">Segments</button>
+    </div>
+
+    <div class="transcript-viewport">
+      <pre id="transcriptPlain" class="transcript"></pre>
+      <pre id="transcriptTs" class="transcript" hidden></pre>
+      <div id="segmentsList" class="segments" hidden></div>
+    </div>
+
+    <div class="foot mono">
+      <span id="footStats"></span>
+      <button type="button" id="clearBtn" class="link-btn mono">Clear →</button>
+    </div>
+  </section>
+
+  <!-- AI Study Pack Card -->
+  <section id="aiCard" class="card" hidden>
+    <div class="ai-head">
+      <div>
+        <div class="kicker mono">✨ AI Study Pack — Gemini</div>
+        <h3 class="ai-title">Exam-ready notes from this lecture</h3>
+        <p class="ai-sub mono">Notes · Summary · Glossary · Quiz · Chat — grounded only in transcript.</p>
+      </div>
+      <button type="button" id="generateBtn" class="primary-btn">
+        <span class="btn-label">✨ Generate</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+      <div id="aiStatus" class="status mono"></div>
+      <div id="aiError" class="error" hidden></div>
+    </div>
+
+    <div id="aiSkeleton" class="skeleton" hidden>
+      <div class="skel-line w90"></div>
+      <div class="skel-line w70"></div>
+      <div class="skel-block"></div>
+    </div>
+
+    <div id="aiContent" hidden>
+      <!-- Quick navigation buttons for AI sections -->
+      <div class="tabs mono ai-tabs" role="tablist" aria-label="AI Study sections">
+        <button role="tab" aria-selected="true" data-ai-tab="notes" class="tab is-active">Notes</button>
+        <button role="tab" aria-selected="false" data-ai-tab="summary" class="tab">Summary</button>
+        <button role="tab" aria-selected="false" data-ai-tab="glossary" class="tab">Glossary</button>
+        <button role="tab" aria-selected="false" data-ai-tab="quiz" class="tab">Quiz</button>
+        <button role="tab" aria-selected="false" data-ai-tab="chat" class="tab">Chat</button>
+      </div>
+
+      <!-- AI Panels (only the active one will be displayed) -->
+      <div class="ai-panels-container">
+        <div id="aiPanelNotes" class="ai-panel" data-panel="notes"></div>
+        <div id="aiPanelSummary" class="ai-panel" data-panel="summary" hidden></div>
+        <div id="aiPanelGlossary" class="ai-panel" data-panel="glossary" hidden></div>
+        <div id="aiPanelQuiz" class="ai-panel" data-panel="quiz" hidden></div>
+        <div id="aiPanelChat" class="ai-panel" data-panel="chat" hidden>
+          <div id="chatLog" class="chat-log"></div>
+          <form id="chatForm" class="chat-form" autocomplete="off">
+            <input id="chatInput" class="chat-input" type="text" placeholder="Ask about this lecture…" />
+            <button type="submit" id="chatSend" class="secondary-btn mono">Send</button>
+          </form>
+          <div class="mono hint">Grounded only in transcript. Try: “Give a 5-mark answer for…”</div>
+        </div>
+      </div>
+
+      <div class="foot mono ai-foot">
+        <button type="button" id="copyPackBtn" class="secondary-btn mono">Copy pack</button>
+        <button type="button" id="downloadMdBtn" class="secondary-btn mono">Download .md</button>
+        <span id="aiFootMeta" class="hint"></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer mono">TranscriptGen Companion · Just run <kbd>npm start</kbd> · Tip: Click 🗗 to drag &amp; place anywhere</div>
+  <div id="toast" class="toast mono" hidden></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
