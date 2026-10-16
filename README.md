@@ -25,7 +25,8 @@ TranscriptGen ships as both a **standalone web application** and a **Manifest V3
 
 ## ⚡ Core Features
 
-### 1. Robust Transcript Extraction
+### 1. Robust Transcript Extraction & Batch Processing
+- **Batch URLs (Unlimited Collection)** — Dedicated web mode allowing students to paste multiple lecture URLs at once. Extracts all transcripts with timestamps, labels each with proper video headings, and compiles them into a single downloadable `.txt` file with zero AI overhead.
 - **Multi-Client Innertube Fallback Sequence** — Tries Android, iOS, and Web player clients in parallel to bypass cloud datacenter IP blocks and bot captchas.
 - **HTML Scraper Fallback** — Extracts raw `timedtext` endpoints directly from watch-page payloads when YouTube player APIs fail.
 - **Paste Transcript Fallback Mode** — For private, region-restricted, or cloud-blocked videos, users can paste text directly from YouTube's native transcript drawer or their own lecture notes.
@@ -52,6 +53,8 @@ TranscriptGen ships as both a **standalone web application** and a **Manifest V3
 | :--- | :---: | :---: |
 | Instant YouTube URL extraction | ✅ | ✅ |
 | Paste transcript mode | ✅ | ✅ |
+| Batch URLs collection (Unlimited) | ✅ | ❌ |
+| Single .txt download with all transcripts | ✅ | ❌ |
 | Structured notes with timestamps | ✅ | ✅ |
 | 30-sec TL;DR & Detailed summaries | ✅ | ✅ |
 | Technical glossary & formula tables | ✅ | ✅ |

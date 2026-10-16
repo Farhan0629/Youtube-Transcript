@@ -346,3 +346,388 @@ clearBtn.addEventListener('click', ()=>{
 urlInput.addEventListener('keydown', (e)=>{
   if (e.key === 'Enter'){ e.preventDefault(); extract(urlInput.value); }
 });
+
+// ==========================================================================
+// BATCH URL EXTRACTION (WEB ONLY — NO LIMITS, NO AI OVERHEAD, SINGLE .TXT)
+// ==========================================================================
+let batchResults = []; // Array of { ok, url, data?, error? }
+const YT_GLOBAL_RE = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})|([a-zA-Z0-9_-]{11})/gi;
+
+function parseBatchUrls(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+  const tokens = rawText.split(/[\r\n,\s]+/).map(t => t.trim()).filter(Boolean);
+  const found = [];
+  const seen = new Set();
+
+  for (const token of tokens) {
+    // Try full match or regex match
+    let vid = null;
+    let url = token;
+    const m = token.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+    if (m && m[1]) {
+      vid = m[1];
+      url = token.startsWith('http') ? token : `https://${token}`;
+    } else if (/^[a-zA-Z0-9_-]{11}$/.test(token)) {
+      vid = token;
+      url = `https://www.youtube.com/watch?v=${token}`;
+    }
+
+    if (vid && !seen.has(vid)) {
+      seen.add(vid);
+      found.push({ videoId: vid, url });
+    }
+  }
+  return found;
+}
+
+function updateBatchCounter() {
+  if (!batchUrlsInput || !batchCountText) return;
+  const links = parseBatchUrls(batchUrlsInput.value);
+  batchCountText.textContent = `${links.length} ${links.length === 1 ? 'link' : 'links'} detected`;
+  if (submitBatchBtn) {
+    const label = submitBatchBtn.querySelector('.btn-label');
+    if (label && !submitBatchBtn.classList.contains('is-loading')) {
+      label.textContent = links.length ? `Extract All (${links.length} Transcripts)` : 'Extract All Transcripts';
+    }
+  }
+}
+
+if (batchUrlsInput) {
+  batchUrlsInput.addEventListener('input', updateBatchCounter);
+  batchUrlsInput.addEventListener('paste', () => setTimeout(updateBatchCounter, 50));
+}
+
+if (batchPasteClipBtn) {
+  batchPasteClipBtn.addEventListener('click', async () => {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (clipText) {
+        batchUrlsInput.value = (batchUrlsInput.value ? batchUrlsInput.value.trim() + '\n' : '') + clipText.trim();
+        updateBatchCounter();
+        toast('Pasted from clipboard ✓');
+      }
+    } catch (_) {
+      batchUrlsInput.focus();
+      document.execCommand('paste');
+      setTimeout(updateBatchCounter, 100);
+    }
+  });
+}
+
+if (batchSampleBtn) {
+  batchSampleBtn.addEventListener('click', () => {
+    const samples = [
+      'https://www.youtube.com/watch?v=7ZQbS0bCMlg', // BGP Lecture
+      'https://youtu.be/jNQXAC9IVRw',                 // Me at the zoo
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'  // Classic
+    ];
+    batchUrlsInput.value = samples.join('\n');
+    updateBatchCounter();
+    toast('Loaded 3 sample links ✓');
+  });
+}
+
+if (batchClearInputBtn) {
+  batchClearInputBtn.addEventListener('click', () => {
+    batchUrlsInput.value = '';
+    updateBatchCounter();
+    showBatchError('');
+    if (batchStatusEl) batchStatusEl.textContent = '';
+  });
+}
+
+function setBatchLoading(v, progressLabel = '') {
+  if (!submitBatchBtn) return;
+  submitBatchBtn.classList.toggle('is-loading', v);
+  submitBatchBtn.disabled = v;
+  if (batchUrlsInput) batchUrlsInput.disabled = v;
+  if (batchProgressWrap) batchProgressWrap.hidden = !v;
+  if (progressLabel && batchProgressLabel) batchProgressLabel.textContent = progressLabel;
+}
+
+function showBatchError(msg) {
+  if (!batchErrorEl) return;
+  batchErrorEl.textContent = msg || '';
+  batchErrorEl.hidden = !msg;
+}
+
+function appendBatchCard(data, idx, rawUrl) {
+  if (!batchItemsList) return;
+  const card = document.createElement('div');
+  card.className = 'batch-card';
+  card.id = `batchItem_${idx}`;
+
+  const sec = data.durationApprox || 'Unknown';
+  card.innerHTML = `
+    <div class="batch-card-head" role="button" tabindex="0" title="Click to view/hide transcript">
+      <div class="batch-card-info">
+        <div class="batch-card-index mono">#${idx} · Video Transcript</div>
+        <div class="batch-card-title">${escapeHtml(data.title || 'YouTube Video')}</div>
+        <div class="batch-card-meta mono">
+          <span>~ <b>${escapeHtml(sec)}</b></span>
+          <span><b>${fmt(data.wordCount || 0)}</b> words</span>
+          <span><b>${fmt(data.segmentCount || 0)}</b> segments</span>
+          ${data.elapsedMs ? `<span>${(data.elapsedMs / 1000).toFixed(1)}s</span>` : ''}
+        </div>
+      </div>
+      <div class="batch-card-actions">
+        <span class="batch-status-pill ready">✓ Ready</span>
+        <button type="button" class="secondary-btn mono" data-copy-idx="${idx}">⧉ Copy</button>
+        <a href="${escapeHtml(data.url || rawUrl)}" target="_blank" rel="noopener" class="secondary-btn mono">YouTube ↗</a>
+        <span class="batch-card-toggle">▾ View</span>
+      </div>
+    </div>
+    <div class="batch-card-body" hidden>
+      <pre class="transcript ts">${escapeHtml(data.title)}\n${escapeHtml(data.url)}\n\n${escapeHtml(data.timestamped || data.text)}</pre>
+    </div>
+  `;
+
+  // Toggle accordion on header click
+  const head = card.querySelector('.batch-card-head');
+  const body = card.querySelector('.batch-card-body');
+  const toggleSpan = card.querySelector('.batch-card-toggle');
+
+  head.addEventListener('click', (e) => {
+    // Ignore if clicking action buttons or links
+    if (e.target.closest('button') || e.target.closest('a')) return;
+    const isHidden = body.hidden;
+    body.hidden = !isHidden;
+    toggleSpan.textContent = isHidden ? '▴ Hide' : '▾ View';
+  });
+
+  // Individual copy button
+  const cpBtn = card.querySelector(`[data-copy-idx="${idx}"]`);
+  if (cpBtn) {
+    cpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyText(`${data.title}\n${data.url}\n\n${data.timestamped || data.text}`);
+    });
+  }
+
+  batchItemsList.appendChild(card);
+}
+
+function appendBatchCardError(errMsg, idx, rawUrl) {
+  if (!batchItemsList) return;
+  const card = document.createElement('div');
+  card.className = 'batch-card has-error';
+  card.id = `batchItem_${idx}`;
+
+  card.innerHTML = `
+    <div class="batch-card-head">
+      <div class="batch-card-info">
+        <div class="batch-card-index mono">#${idx} · Extraction Error</div>
+        <div class="batch-card-title">${escapeHtml(rawUrl)}</div>
+        <div class="batch-card-meta mono" style="color:#ffd1ce">
+          <span>⚠️ ${escapeHtml(errMsg || 'Transcript unavailable')}</span>
+        </div>
+      </div>
+      <div class="batch-card-actions">
+        <span class="batch-status-pill failed">✗ Failed</span>
+        <a href="${escapeHtml(rawUrl)}" target="_blank" rel="noopener" class="secondary-btn mono">YouTube ↗</a>
+      </div>
+    </div>
+  `;
+  batchItemsList.appendChild(card);
+}
+
+function buildCompiledBatchText(results) {
+  const successful = results.filter(r => r.ok && r.data);
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const totalWords = successful.reduce((acc, r) => acc + (r.data.wordCount || 0), 0);
+  const totalSegments = successful.reduce((acc, r) => acc + (r.data.segmentCount || 0), 0);
+
+  const lines = [];
+  lines.push('================================================================================');
+  lines.push('TRANSCRIPTGEN — BATCH TRANSCRIPT COLLECTION');
+  lines.push(`Exported: ${now}`);
+  lines.push(`Total Requested: ${results.length} | Successful: ${successful.length} | Failed: ${results.length - successful.length}`);
+  lines.push(`Total Word Count: ${fmt(totalWords)} words | Total Segments: ${fmt(totalSegments)}`);
+  lines.push('Note: All transcripts below include video titles, URLs, stats, and timestamped lines.');
+  lines.push('================================================================================');
+  lines.push('');
+
+  results.forEach((item, index) => {
+    const num = index + 1;
+    lines.push('================================================================================');
+    if (item.ok && item.data) {
+      const d = item.data;
+      lines.push(`[VIDEO ${num} OF ${results.length}]`);
+      lines.push(`TITLE:    ${d.title || 'Untitled'}`);
+      lines.push(`URL:      ${d.url || item.url}`);
+      lines.push(`DURATION: ~${d.durationApprox || 'Unknown'}`);
+      lines.push(`STATS:    ${fmt(d.segmentCount || 0)} segments · ${fmt(d.wordCount || 0)} words`);
+      lines.push('================================================================================');
+      lines.push('');
+      lines.push(d.timestamped || d.text || '(empty transcript)');
+    } else {
+      lines.push(`[VIDEO ${num} OF ${results.length} - FAILED]`);
+      lines.push(`URL:      ${item.url}`);
+      lines.push(`ERROR:    ${item.error || 'Failed to extract transcript'}`);
+      lines.push('================================================================================');
+      lines.push('(No transcript available for this video)');
+    }
+    lines.push('');
+    lines.push('');
+  });
+
+  lines.push('================================================================================');
+  lines.push('End of TranscriptGen Batch Collection');
+  lines.push('================================================================================');
+  return lines.join('\n');
+}
+
+if (batchForm) {
+  batchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showBatchError('');
+    const raw = (batchUrlsInput?.value || '').trim();
+    const urls = parseBatchUrls(raw);
+
+    if (!urls.length) {
+      showBatchError('Please paste at least one valid YouTube video link or video ID.');
+      return;
+    }
+
+    // Reset results state
+    batchResults = [];
+    if (batchItemsList) batchItemsList.innerHTML = '';
+    if (batchResult) batchResult.hidden = true;
+
+    // Hide single-video result & AI card to prevent visual clutter
+    if (result) result.hidden = true;
+    const aiCard = document.getElementById('aiCard');
+    if (aiCard) aiCard.hidden = true;
+
+    setBatchLoading(true, `Starting batch of ${urls.length} ${urls.length === 1 ? 'video' : 'videos'}…`);
+    if (batchProgressBar) batchProgressBar.style.width = '0%';
+    if (batchProgressPercent) batchProgressPercent.textContent = '0%';
+
+    const tStart = Date.now();
+    let completedCount = 0;
+    let successCount = 0;
+
+    // Process sequentially or with controlled small concurrency to avoid YouTube spam throttling
+    for (let i = 0; i < urls.length; i++) {
+      const item = urls[i];
+      const idx = i + 1;
+      const pct = Math.round((i / urls.length) * 100);
+
+      if (batchProgressBar) batchProgressBar.style.width = `${pct}%`;
+      if (batchProgressPercent) batchProgressPercent.textContent = `${pct}%`;
+      if (batchProgressLabel) {
+        batchProgressLabel.textContent = `Extracting ${idx} of ${urls.length}: "${item.url.slice(0, 48)}…"`;
+      }
+
+      try {
+        const r = await fetch('/api/transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: item.url, lang: 'en' })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+
+        batchResults.push({ ok: true, url: item.url, data: j });
+        appendBatchCard(j, idx, item.url);
+        successCount++;
+      } catch (err) {
+        const msg = err.message || 'Extraction failed.';
+        batchResults.push({ ok: false, url: item.url, error: msg });
+        appendBatchCardError(msg, idx, item.url);
+      }
+
+      completedCount++;
+      const currentPct = Math.round((completedCount / urls.length) * 100);
+      if (batchProgressBar) batchProgressBar.style.width = `${currentPct}%`;
+      if (batchProgressPercent) batchProgressPercent.textContent = `${currentPct}%`;
+    }
+
+    const tTotal = Date.now() - tStart;
+    setBatchLoading(false);
+
+    // Finalize statistics
+    const totalWords = batchResults.reduce((acc, r) => acc + (r.ok && r.data ? r.data.wordCount || 0 : 0), 0);
+    const totalSegments = batchResults.reduce((acc, r) => acc + (r.ok && r.data ? r.data.segmentCount || 0 : 0), 0);
+
+    if (batchMainTitle) {
+      batchMainTitle.textContent = `Batch Collection: ${successCount} of ${urls.length} Ready`;
+    }
+    if (batchMeta) {
+      const metaItems = [
+        `<b>${successCount}/${urls.length}</b> successful`,
+        `<b>${fmt(totalWords)}</b> total words`,
+        `<b>${fmt(totalSegments)}</b> segments`,
+        `<b>${(tTotal / 1000).toFixed(1)}s</b> elapsed`
+      ];
+      batchMeta.innerHTML = metaItems.join(' · ');
+    }
+    if (batchFootStats) {
+      batchFootStats.textContent = `${successCount} transcripts ready · ${fmt(totalWords)} words · Compiled .txt available below`;
+    }
+
+    if (batchResult) {
+      batchResult.hidden = false;
+      batchResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    toast(`Batch complete: ${successCount} of ${urls.length} transcripts extracted ✓`);
+  });
+}
+
+// Download Compiled .txt
+if (downloadBatchAllBtn) {
+  downloadBatchAllBtn.addEventListener('click', () => {
+    if (!batchResults.length) return;
+    const successful = batchResults.filter(r => r.ok && r.data);
+    if (!successful.length) {
+      toast('No successful transcripts to download.');
+      return;
+    }
+    const compiled = buildCompiledBatchText(batchResults);
+    const safeDate = new Date().toISOString().slice(0, 10);
+    const filename = `TranscriptGen_Batch_${successful.length}_Videos_${safeDate}.txt`;
+
+    const blob = new Blob([compiled], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast(`Downloaded single .txt file (${successful.length} transcripts) ✓`);
+  });
+}
+
+// Copy All Transcripts
+if (copyBatchAllBtn) {
+  copyBatchAllBtn.addEventListener('click', () => {
+    if (!batchResults.length) return;
+    const compiled = buildCompiledBatchText(batchResults);
+    copyText(compiled);
+    toast(`Copied all ${batchResults.length} transcripts with headings ✓`);
+  });
+}
+
+// Clear Batch Results
+if (clearBatchResultBtn) {
+  clearBatchResultBtn.addEventListener('click', () => {
+    batchResults = [];
+    if (batchItemsList) batchItemsList.innerHTML = '';
+    if (batchResult) batchResult.hidden = true;
+    if (batchUrlsInput) {
+      batchUrlsInput.value = '';
+      updateBatchCounter();
+      batchUrlsInput.focus();
+    }
+    toast('Batch cleared');
+  });
+}
+
+// Scroll to top
+if (scrollUpBatchBtn) {
+  scrollUpBatchBtn.addEventListener('click', () => {
+    if (batchForm) batchForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
